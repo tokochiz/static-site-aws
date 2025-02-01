@@ -24,7 +24,7 @@ const Profile = () => {
         
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold mb-2">名前 太郎</h2>
+            <h2 className="text-2xl font-bold mb-2">Chihiro TOKOYODA</h2>
             <p className="text-gray-600">Web Developer / Designer</p>
           </div>
           
