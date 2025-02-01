@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Today's Lily Photo-gallery</title>
-    <!-- <link rel="stylesheet" href="css/reset.css"> -->
+    <link rel="stylesheet" href="css/reset.css">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -17,9 +17,19 @@
     </header>
 
     <main class="gallery-container">
-        <div class="photo-grid">
-            <img src="photos/original/dog_photo1.webp" alt="おやつタイム" class="gallery-photo">
+        <div id="photo-grid" class="photo-grid">
+            <!-- 写真はJavaScriptで動的に追加 -->
         </div>
     </main>
+
+    <div id="lightbox" class="lightbox">
+        <div class="lightbox-content">
+            <img id="lightbox-image" src="" alt="">
+            <button class="close-button">&times;</button>
+        </div>
+    </div>
+
+    <script src="js/gallery.js"></script>
+    <script src="js/lightbox.js"></script>
 </body>
 </html>

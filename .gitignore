@@ -1,0 +1,7 @@
+# AWS関連
+*.cfn.json
+*.cfn.yml
+
+# 機密情報
+*secret*
+*credentials*

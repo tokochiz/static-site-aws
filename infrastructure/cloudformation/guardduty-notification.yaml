@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: GuardDuty Stack
+
+Parameters:
+  # ------------------------------------------------------------#
+  # Parameters
+  # ------------------------------------------------------------# 
+  MailAddress:
+    Type: String
+
+Resources:
+  # ------------------------------------------------------------#
+  # S3 Bucket for Security Logs
+  # ------------------------------------------------------------#
+  SecurityLogsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub security-logs-${AWS::AccountId}-${AWS::Region}
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: TransitionAndExpireSecurityLogs
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+            Expiration:
+            Days: 365
+            Prefix: ""  # Apply to all objects
+  # ------------------------------------------------------------#
+  # Bucket Policy for Security Logs
+  # ------------------------------------------------------------#
+  SecurityLogsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SecurityLogsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: DenyUnencryptedObjectUploads
+            Effect: Deny
+            Principal: '*'
+            Action: s3:PutObject
+            Resource: !Sub "${SecurityLogsBucket.Arn}/*"
+            Condition:
+              StringNotEquals:
+                s3:x-amz-server-side-encryption: AES256
+          - Sid: AWSConfigBucketPermissionsCheck
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: 
+              - s3:GetBucketAcl
+              - s3:ListBucket
+            Resource: !Sub "${SecurityLogsBucket.Arn}"
+            Condition:
+              StringEquals:
+                AWS:SourceAccount: !Sub "${AWS::AccountId}"
+          - Sid: AWSConfigBucketDelivery
+            Effect: Allow
+            Principal:
+              Service: config.amazonaws.com
+            Action: s3:PutObject
+            Resource: !Sub "${SecurityLogsBucket.Arn}/AWSLogs/${AWS::AccountId}/Config/*"
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+                AWS:SourceAccount: !Sub "${AWS::AccountId}"
+
+  # ------------------------------------------------------------#
+  # SNS
+  # ------------------------------------------------------------# 
+  SnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref MailAddress
+          Protocol: email
+      TopicName: sns-guardduty
+
+  SnsTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Id: __default_policy_ID
+        Statement:
+          - Sid: __default_statement_ID
+            Effect: Allow
+            Principal:
+              AWS: '*'
+            Action:
+              - SNS:GetTopicAttributes
+              - SNS:SetTopicAttributes
+              - SNS:AddPermission
+              - SNS:RemovePermission
+              - SNS:DeleteTopic
+              - SNS:Subscribe
+              - SNS:ListSubscriptionsByTopic
+              - SNS:Publish
+            Resource: !Ref SnsTopic
+            Condition:
+              StringEquals:
+                AWS:SourceOwner: !Sub ${AWS::AccountId}
+          - Sid: AWSEvents_guardduty
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref SnsTopic
+      Topics:
+        - !Ref SnsTopic
+
+  # ------------------------------------------------------------#
+  # EventBridge Rule
+  # ------------------------------------------------------------#
+  EventBridge:
+    Type: AWS::Events::Rule
+    Properties:
+      EventPattern:
+        source:
+          - aws.guardduty
+        detail-type:
+          - GuardDuty Finding
+      Name: guardduty-event
+      State: ENABLED
+      Targets:
+        - Arn: !Ref SnsTopic
+          Id: guardduty-event
+          InputTransformer:
+            InputPathsMap:
+              severity: $.detail.severity
+              Account_ID: $.detail.accountId
+              Finding_ID: $.detail.id
+              Finding_Type: $.detail.type
+              region: $.region
+              time: $.time
+              Finding_description: $.detail.description
+            InputTemplate: |
+              "AWS GuardDuty Finding"
+              "Account ID: <Account_ID>"
+              "Severity: <severity>"
+              "Time: <time>"
+              "Finding Type: <Finding_Type>"
+              "Region: <region>"
+              "Description: <Finding_description>"
+              "Check details: https://console.aws.amazon.com/guardduty/home?region=<region>#/findings?search=id=<Finding_ID>"
