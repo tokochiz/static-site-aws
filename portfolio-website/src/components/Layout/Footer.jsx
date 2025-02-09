@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const Footer = () => {
-    const currentYear = new Date().getFullYear();
+    const currentYear = new Date().gevcFullYear();
     
     return (
       <footer className="bg-gray-50 border-t">

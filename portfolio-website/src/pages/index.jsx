@@ -1,7 +1,9 @@
-// src/pages/index.jsx
 import React from 'react';
+import ReactDOM from 'react-dom';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import Layout from '../components/Layout/Layout';
 import PortfolioGrid from '../components/Portfolio/PortfolioGrid';
+import PortfolioDetail from '../components/Portfolio/PortfolioDetail';
 
 const HomePage = () => {
   return (
@@ -12,4 +14,12 @@ const HomePage = () => {
   );
 };
 
-export default HomePage;
+ReactDOM.render(
+  <Router>
+    <Switch>
+      <Route path="/" exact component={HomePage} />
+      <Route path="/portfolio/:id" component={PortfolioDetail} />
+    </Switch>
+  </Router>,
+  document.getElementById('root')
+);

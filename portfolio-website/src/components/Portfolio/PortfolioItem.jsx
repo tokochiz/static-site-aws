@@ -1,6 +1,6 @@
 import React from 'react';
 
-const PortfolioItem = ({ image, title }) => {
+const PortfolioItem = ({ image, title, id, onClick }) => {
   return (
     <div className="overflow-hidden rounded-lg shadow-lg">
       <img 
